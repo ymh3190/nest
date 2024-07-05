@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  admin
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  email     String  @unique
+  password  String
+  firstName String?
+  lastName  String?
+  role      Role    @default(user)
+
+  bookmarks Bookmark[]
+  token     Token?
+
+  @@map("users")
+}
+
+model Token {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  refreshToken String
+  isValid      Boolean @default(true)
+  ip           String
+  userAgent    String
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int  @unique
+
+  @@map("tokens")
+}
+
+model Bookmark {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title       String
+  description String?
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  @@map("bookmarks")
+}
