@@ -1,16 +1,12 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { TokenUser } from 'src/user/interfaces';
 
 export const GetUser = createParamDecorator(
   (data: string | undefined, ctx: ExecutionContext) => {
-    const request: Express.Request & {
-      user: {
-        id: number;
-        email: string;
-      };
-    } = ctx.switchToHttp().getRequest();
+    const req: Express.Request & TokenUser = ctx.switchToHttp().getRequest();
     if (data) {
-      return request.user[data];
+      return req.user[data];
     }
-    return request.user;
+    return req.user;
   },
 );

@@ -1,19 +1,19 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async getUsers(id: number) {
-    const user = await this.prisma.user.findUnique({
-      where: {
-        id,
-      },
-    });
-    if (user.role !== 'admin') {
-      throw new ForbiddenException('Unauthorized to access this route');
-    }
+  async getUsers() {
+    // const user = await this.prisma.user.findUnique({
+    //   where: {
+    //     id,
+    //   },
+    // });
+    // if (user.role !== 'admin') {
+    //   throw new ForbiddenException('Unauthorized to access this route');
+    // }
     const users = await this.prisma.user.findMany();
     return users;
   }

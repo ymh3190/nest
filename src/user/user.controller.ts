@@ -24,10 +24,10 @@ import { UserService } from './user.service';
 import { NextFunction, Request, Response } from 'express';
 import { UserDto } from './dto';
 import { TokenUser, User } from './interfaces';
-import { AuthGuard } from 'src/auth/guard';
-import { GetUser } from 'src/auth/decorator';
+import { AuthGuard, RolesGuard } from 'src/auth/guard';
+import { GetUser, Roles } from 'src/auth/decorator';
 
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, RolesGuard)
 @Controller('api/v1/users')
 export class UserController {
   constructor(private userService: UserService) {}
@@ -43,6 +43,7 @@ export class UserController {
   }
 
   @Get('')
+  @Roles(['admin'])
   async getUsers(
     @Ip() ip: string,
     // @Next() next: NextFunction,
@@ -51,14 +52,16 @@ export class UserController {
     @Req() req: Request & TokenUser,
     @GetUser('id', ParseIntPipe) id: number,
   ) {
+    console.log(req.user);
     // next();
     // console.log(ip, hosts, userAgent, req.user);
-    return this.userService.getUsers(id);
+    return this.userService.getUsers();
   }
 
   @Get(':id')
   // @Header('Cache-Control', 'none') // response header
   // @Redirect('localhost:4000/api/v1/users', 302)
+  @Roles(['admin', 'user'])
   getUser(
     @Param('id', ParseIntPipe) id: number,
     // @Query('version') version: string,
@@ -75,12 +78,14 @@ export class UserController {
   // }
 
   @Patch(':id')
+  @Roles(['admin', 'user'])
   update(@Param() params: any, @Param('id') id: string, @Body() dto: UserDto) {
     // console.log(params.id, id, dto);
     return this.userService.update();
   }
 
   @Delete(':id')
+  @Roles(['admin', 'user'])
   @HttpCode(HttpStatus.NO_CONTENT)
   delete(@Param('id', ParseIntPipe) id: number) {
     // console.log(id);
