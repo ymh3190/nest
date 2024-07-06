@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Header,
   Headers,
@@ -63,10 +64,17 @@ export class UserController {
   // @Redirect('localhost:4000/api/v1/users', 302)
   @Roles(['admin', 'user'])
   getUser(
+    @GetUser() user: { id: number; email: string; role: 'admin' | 'user' },
     @Param('id', ParseIntPipe) id: number,
     // @Query('version') version: string,
   ) {
+    // if admin, pass
+    // if user, check user id == id
+    // check permission
     // console.log(version, id);
+    if (user.role === 'user' && user.id !== id) {
+      throw new ForbiddenException('Invalid Authentication');
+    }
     return this.userService.getUser(id);
   }
 
