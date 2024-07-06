@@ -39,7 +39,7 @@ model Token {
   ip           String
   userAgent    String
 
-  user   User @relation(fields: [userId], references: [id])
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId Int  @unique
 
   @@map("tokens")

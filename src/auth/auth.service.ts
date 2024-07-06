@@ -5,70 +5,65 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AuthDto } from './dto';
+import { Request, Response } from 'express';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as argon from 'argon2';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { TokenUser } from 'src/user/interfaces';
 import { randomBytes } from 'crypto';
-import { Request, Response } from 'express';
-import { Role } from './enum';
+import { JwtStrategy } from './strategy';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
-    private jwtService: JwtService,
-    private config: ConfigService,
+    private jwt: JwtStrategy,
   ) {}
 
   async signup(dto: AuthDto) {
-    const { email, password } = dto;
-
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: dto.email,
+      },
     });
-    if (existingUser) {
-      throw new BadRequestException('User already exists');
+    if (user) {
+      throw new BadRequestException('User already exist');
     }
 
     const users = await this.prisma.user.findMany();
-    const role = users.length === 0 ? Role.Admin : Role.User;
+    const role = users.length === 0 ? 'admin' : 'user';
 
-    const hash = await argon.hash(password);
-    const user = await this.prisma.user.create({
+    const hash = await argon.hash(dto.password);
+    await this.prisma.user.create({
       data: {
-        email,
+        email: dto.email,
         password: hash,
         role,
       },
     });
-    return user;
+    return;
   }
 
   async signin(req: Request, res: Response, dto: AuthDto) {
-    const { email, password } = dto;
-
     const user = await this.prisma.user.findUnique({
       where: {
-        email,
+        email: dto.email,
       },
     });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const isCorrectPassword = await argon.verify(user.password, password);
+    const isCorrectPassword = await argon.verify(user.password, dto.password);
     if (!isCorrectPassword) {
       throw new BadRequestException('Password not match');
     }
 
-    const tokenUser: {
-      user: { userId: number; email: string };
-      refreshToken?: string;
-    } = {
-      user: { userId: user.id, email: user.email },
+    const tokenUser: TokenUser = {
+      user: {
+        id: user.id,
+        email: user.email,
+      },
     };
-
     let refreshToken = '';
     const existingToken = await this.prisma.token.findUnique({
       where: {
@@ -78,66 +73,54 @@ export class AuthService {
     if (existingToken) {
       const { isValid } = existingToken;
       if (!isValid) {
-        throw new ForbiddenException('Credentials invalid');
+        throw new ForbiddenException('Invalid Credentials');
       }
-      tokenUser.refreshToken = existingToken.refreshToken;
-
-      const accessJwt = await this.jwtService.signAsync(tokenUser, {
-        expiresIn: '1d',
-        secret: this.config.get('JWT_SECRET'),
-      });
-      const refreshJwt = await this.jwtService.signAsync(tokenUser, {
-        expiresIn: '30d',
-        secret: this.config.get('JWT_SECRET'),
-      });
-      res.cookie('accessToken', accessJwt, {
-        httpOnly: true,
-        secure: false,
-        signed: true,
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
-      });
-      res.cookie('refreshToken', refreshJwt, {
-        httpOnly: true,
-        secure: false,
-        signed: true,
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-      });
+      refreshToken = existingToken.refreshToken;
+      this.jwt.attachCookiesToRes(res, tokenUser, refreshToken);
+      // const accessTokenJwt = this.jwt.createJwt(tokenUser);
+      // const refreshTokenJwt = this.jwt.createJwt(tokenUser);
+      // res.cookie('accessToken', accessTokenJwt, {
+      //   httpOnly: true,
+      //   secure: false,
+      //   signed: true,
+      //   expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+      // });
+      // res.cookie('refreshToken', refreshTokenJwt, {
+      //   httpOnly: true,
+      //   secure: false,
+      //   signed: true,
+      //   expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+      // });
       return tokenUser;
     }
 
-    const accessJwt = await this.jwtService.signAsync(tokenUser, {
-      expiresIn: '1d',
-      secret: this.config.get('JWT_SECRET'),
-    });
-
     refreshToken = randomBytes(40).toString('hex');
-    tokenUser.refreshToken = refreshToken;
-    const refreshJwt = await this.jwtService.signAsync(tokenUser, {
-      expiresIn: '30d',
-      secret: this.config.get('JWT_SECRET'),
-    });
-
     const ip = req.ip;
     const userAgent = req.headers['user-agent'];
-    const userToken = { ip, userAgent, refreshToken, userId: user.id };
+    const userToken = { userId: user.id, ip, userAgent, refreshToken };
+
     await this.prisma.token.create({
       data: {
         ...userToken,
       },
     });
 
-    res.cookie('accessToken', accessJwt, {
-      httpOnly: true,
-      secure: false,
-      signed: true,
-      expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
-    });
-    res.cookie('refreshToken', refreshJwt, {
-      httpOnly: true,
-      secure: false,
-      signed: true,
-      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-    });
+    this.jwt.attachCookiesToRes(res, tokenUser, refreshToken);
+    // const accessTokenJwt = this.jwt.createJwt(tokenUser);
+    // tokenUser.refreshToken = refreshToken;
+    // const refreshTokenJwt = this.jwt.createJwt(tokenUser);
+    // res.cookie('accessToken', accessTokenJwt, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   signed: true,
+    //   expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+    // });
+    // res.cookie('refreshToken', refreshTokenJwt, {
+    //   httpOnly: true,
+    //   secure: false,
+    //   signed: true,
+    //   expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+    // });
     return tokenUser;
   }
 }

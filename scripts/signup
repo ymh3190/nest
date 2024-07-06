@@ -1,0 +1,5 @@
+#!/bin/bash
+
+curl -d '{ "email": "a@a.com", "password": "1" }' \
+-H 'Content-Type: application/json' \
+localhost:4000/api/v1/auth/signup

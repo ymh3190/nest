@@ -1,0 +1,3 @@
+#!/bin/bash
+
+curl -i -b cookies localhost:4000/api/v1/users/1
