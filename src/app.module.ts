@@ -25,6 +25,7 @@ export class AppModule implements NestModule {
     // consumer.apply(LoggerMiddlware).forRoutes('api/v1/users');
     consumer
       .apply(LoggerMiddlware)
+      // .forRoutes({ path: '*', method: RequestMethod.ALL })
       .forRoutes({ path: 'api/v1/users', method: RequestMethod.GET });
   }
 }

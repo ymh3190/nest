@@ -87,16 +87,30 @@ export class UserController {
 
   @Patch(':id')
   @Roles(['admin', 'user'])
-  update(@Param() params: any, @Param('id') id: string, @Body() dto: UserDto) {
+  update(
+    @Param() params: any,
+    @GetUser() user: { id: number; email: string; role: 'admin' | 'user' },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UserDto,
+  ) {
     // console.log(params.id, id, dto);
-    return this.userService.update();
+    if (user.role === 'user' && user.id !== id) {
+      throw new ForbiddenException('Invalid Authentication');
+    }
+    return this.userService.update(id, dto);
   }
 
   @Delete(':id')
   @Roles(['admin', 'user'])
   @HttpCode(HttpStatus.NO_CONTENT)
-  delete(@Param('id', ParseIntPipe) id: number) {
+  delete(
+    @GetUser() user: { id: number; email: string; role: 'admin' | 'user' },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
     // console.log(id);
-    return this.userService.delete();
+    if (user.role === 'user' && user.id !== id) {
+      throw new ForbiddenException('Invalid Authentication');
+    }
+    return this.userService.delete(id);
   }
 }
