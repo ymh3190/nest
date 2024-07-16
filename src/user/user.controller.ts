@@ -20,6 +20,7 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { NextFunction, Request, Response } from 'express';
@@ -27,8 +28,10 @@ import { UserDto } from './dto';
 import { TokenUser, User } from './interfaces';
 import { AuthGuard, RolesGuard } from 'src/auth/guard';
 import { GetUser, Roles } from 'src/auth/decorator';
+import { LoggingInterceptor } from 'src/interceptor';
 
 @UseGuards(AuthGuard, RolesGuard)
+@UseInterceptors(LoggingInterceptor)
 @Controller('api/v1/users')
 export class UserController {
   constructor(private userService: UserService) {}
@@ -53,7 +56,7 @@ export class UserController {
     @Req() req: Request & TokenUser,
     @GetUser('id', ParseIntPipe) id: number,
   ) {
-    console.log(req.user);
+    console.log(req.user, 'getUsers()');
     // next();
     // console.log(ip, hosts, userAgent, req.user);
     return this.userService.getUsers();

@@ -6,11 +6,14 @@ import {
   Post,
   Req,
   Res,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthDto } from './dto';
 import { Request, Response } from 'express';
+import { LoggingInterceptor } from 'src/interceptor';
 
+@UseInterceptors(LoggingInterceptor)
 @Controller('api/v1/auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
